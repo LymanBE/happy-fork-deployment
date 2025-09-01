@@ -1,0 +1,42 @@
+# yamllint configuration
+# https://yamllint.readthedocs.io/en/stable/configuration.html
+extends: default
+rules:
+  # Line length - disabled for long URLs and code blocks
+  line-length:
+    max: 120
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  # Document start - not required
+  document-start: disable
+  # Truthy values - allow 'on' for GitHub Actions
+  truthy:
+    allowed-values: ['true', 'false', 'on']
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 0
+  # Brackets
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  # Quoted strings - only when necessary
+  quoted-strings:
+    quote-type: single
+    required: only-when-needed
+    allow-quoted-quotes: true
+# Ignore paths
+ignore: |-
+  node_modules/
+  .git/
+  *.min.yml
+  *.generated.yml

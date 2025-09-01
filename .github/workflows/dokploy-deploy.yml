@@ -1,0 +1,121 @@
+name: Dokploy Deployment
+on:
+  repository_dispatch:
+    types: [dokploy-deploy]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.yml'
+      - 'Dockerfile'
+      - '.env.example'
+      - 'agent_configs/**'
+jobs:
+  deploy:
+    name: Deploy to Dokploy
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Age Key
+        run: |
+          mkdir -p ~/.config/mise
+          echo "${{ secrets.AGE_PRIVATE_KEY }}" | base64 -d > ~/.config/mise/age.txt
+          chmod 600 ~/.config/mise/age.txt
+      - name: Setup mise and tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+      - name: Trust mise config
+        run: |
+          mise trust mise.toml
+          mise settings set sops.age_key_file ~/.config/mise/age.txt
+      - name: Setup Dokploy CLI
+        run: |
+          npm install -g @dokploy/cli
+      - name: Configure Dokploy
+        run: |
+          # Extract secrets from encrypted file
+          eval "$(mise env)"
+          export DOKPLOY_URL="http://100.119.254.98:3000"
+
+          if [ -n "$DOKPLOY_API_KEY" ] && [ "$DOKPLOY_API_KEY" != "placeholder" ]; then
+            dokploy login --api-key "$DOKPLOY_API_KEY" --url "$DOKPLOY_URL" || true
+          else
+            echo "Dokploy API key not configured, will use SSH deployment"
+          fi
+      - name: Build and Push to Dokploy
+        run: |
+          # Create deployment package
+          tar -czf deployment.tar.gz \
+            docker-compose.yml \
+            agent_configs \
+            .env.example \
+            deploy.sh \
+            README.md
+
+          # Extract secrets
+          eval "$(mise env)"
+
+          # Deploy via Dokploy API if configured
+          if [ -n "$DOKPLOY_API_KEY" ] && [ "$DOKPLOY_API_KEY" != "placeholder" ]; then
+            echo "Deploying via Dokploy API..."
+            curl -X POST \
+              -H "x-api-key: $DOKPLOY_API_KEY" \
+              -H "Content-Type: multipart/form-data" \
+              -F "file=@deployment.tar.gz" \
+              -F "project=happy-assistant" \
+              -F "environment=production" \
+              -F "auto_deploy=true" \
+              http://100.119.254.98:3000/api/projects/deploy
+          else
+            echo "Deploying via SSH..."
+            # Fallback to SSH deployment
+            ssh -o StrictHostKeyChecking=no brett@100.119.254.98 << 'EOF'
+              cd /home/brett/happy-fork-deployment
+              git fetch origin
+              git reset --hard origin/main
+              export SOPS_AGE_KEY_FILE=~/.config/mise/age.txt
+              eval "$(mise env)"
+              docker compose down
+              docker compose build --no-cache
+              docker compose up -d
+            EOF
+          fi
+      - name: Verify Deployment
+        run: |
+          sleep 30
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://100.119.254.98:8082)
+          if [ "$response" = "200" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed - HTTP $response"
+            exit 1
+          fi
+      - name: Update Dokploy Project Status
+        if: always()
+        run: |-
+          status="success"
+          if [ "${{ job.status }}" != "success" ]; then
+            status="failed"
+          fi
+
+          # Extract secrets
+          eval "$(mise env)"
+
+          if [ -n "$DOKPLOY_API_KEY" ] && [ "$DOKPLOY_API_KEY" != "placeholder" ]; then
+            curl -X PATCH \
+              -H "x-api-key: $DOKPLOY_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"project\": \"happy-assistant\",
+                \"status\": \"$status\",
+                \"version\": \"${{ github.sha }}\",
+                \"deployed_at\": \"$(date -Iseconds)\",
+                \"deployed_by\": \"github-actions\"
+              }" \
+              http://100.119.254.98:3000/api/projects/happy-assistant/status || true
+          fi

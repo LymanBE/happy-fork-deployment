@@ -1,0 +1,44 @@
+# Cocogitto Configuration - Conventional Commits & Release Management
+# https://docs.cocogitto.io
+
+# Define commit types and their changelog sections
+[commit_types]
+feat = { changelog_title = "✨ Features" }
+fix = { changelog_title = "🐛 Bug Fixes" }
+docs = { changelog_title = "📚 Documentation" }
+style = { changelog_title = "💄 Styling" }
+refactor = { changelog_title = "♻️ Code Refactoring" }
+perf = { changelog_title = "⚡ Performance" }
+test = { changelog_title = "✅ Tests" }
+build = { changelog_title = "📦 Build System" }
+ci = { changelog_title = "👷 CI/CD" }
+chore = { changelog_title = "🔧 Maintenance" }
+revert = { changelog_title = "⏪ Reverts" }
+
+# Hooks for version bumping
+pre_bump_hooks = ["mise run validate-config", "mise run lint"]
+
+post_bump_hooks = ["git push", "git push origin {{version}}"]
+
+# Changelog generation settings
+[changelog]
+template = "default"
+remote = "github.com"
+repository = "happy-fork-deployment"
+owner = "LymanBE"
+
+# Git settings
+[git]
+# Ignore merge commits in changelog
+ignore_merge_commits = true
+
+# Branch whitelist for bumping
+branch_whitelist = ["main", "master"]
+
+# Tag prefix (e.g., "v1.0.0")
+tag_prefix = "v"
+
+# Bump settings
+[bump_profiles.default]
+pre_bump_hooks = ["mise run test"]
+post_bump_hooks = ["git push", "git push origin {{version}}"]

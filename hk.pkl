@@ -1,0 +1,111 @@
+// Happy Fork Deployment - Git Hooks and Linting Configuration
+// https://hk.jdx.dev
+
+amends "package://github.com/jdx/hk/releases/download/v1.2.0/hk@1.2.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.2.0/hk@1.2.0#/Builtins.pkl"
+
+// Define linters for the project (HK has very limited built-ins)
+local linters = new Mapping<String, Step> {
+    // YAML validation and formatting
+    ["yaml"] {
+        glob = List("*.yml", "*.yaml")
+        check = "yamllint {{files}}"
+        fix = "yamlfmt {{files}}"
+    }
+    
+    // JSON formatting with prettier
+    ["json"] {
+        glob = "*.json"
+        check = "prettier --check {{files}}"
+        fix = "prettier --write {{files}}"
+    }
+    
+    // Shell script validation and formatting
+    ["shell"] {
+        glob = "*.sh"
+        check = "shellcheck {{files}}"
+        fix = "shfmt -w {{files}}"
+    }
+    
+    // Markdown linting
+    ["markdown"] {
+        glob = "*.md"
+        check = "markdownlint-cli2 {{files}}"
+        fix = "markdownlint-cli2 --fix {{files}}"
+    }
+    
+    // TOML formatting
+    ["toml"] {
+        glob = "*.toml"
+        check = "taplo check {{files}}"
+        fix = "taplo fmt {{files}}"
+    }
+    
+    // Dockerfile linting (no auto-fix available)
+    ["dockerfile"] {
+        glob = List("Dockerfile", "*.Dockerfile", "*.dockerfile")
+        check = "hadolint {{files}}"
+    }
+    
+    // GitHub Actions linting (no auto-fix available)
+    ["actions"] {
+        glob = ".github/workflows/*.yml"
+        check = "actionlint {{files}}"
+    }
+    
+    // Pkl configuration validation (no auto-fix available)
+    ["pkl"] {
+        glob = "*.pkl"
+        check = "pkl eval {{files}} >/dev/null"
+    }
+}
+
+// Configure git hooks
+hooks {
+    // Pre-commit hook - fix issues and validate
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps {
+            // Run configuration validation first
+            ["validate-config"] {
+                check = "mise run validate-config"
+                exclusive = true
+            }
+            
+            // Apply all linters
+            ...linters
+            
+            // Security check last
+            ["security-check"] {
+                check = "mise run security-check"
+                exclusive = true
+            }
+        }
+    }
+    
+    // Pre-push hook - validate only, no fixes
+    ["pre-push"] {
+        steps = linters
+    }
+    
+    // Commit-msg hook - validate conventional commits
+    ["commit-msg"] {
+        steps {
+            ["conventional-commits"] {
+                check = "cog verify --file {{commit_msg_file}}"
+            }
+        }
+    }
+    
+    // Manual fix command: hk fix
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    
+    // Manual check command: hk check
+    ["check"] {
+        steps = linters
+    }
+}

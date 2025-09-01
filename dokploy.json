@@ -1,0 +1,70 @@
+{
+  "name": "happy-assistant",
+  "description": "Happy Voice Assistant for Claude Code",
+  "type": "docker-compose",
+  "compose": {
+    "file": "docker-compose.yml",
+    "service": "happy-web-custom"
+  },
+  "source": {
+    "type": "github",
+    "repository": "https://github.com/LymanBE/happy-fork-deployment",
+    "branch": "main",
+    "auto_deploy": true
+  },
+  "environment": {
+    "production": {
+      "EXPO_PUBLIC_HAPPY_SERVER_URL": "https://api.cluster-fluster.com",
+      "NODE_ENV": "production"
+    }
+  },
+  "domains": [
+    {
+      "host": "happy.100.119.254.98.nip.io",
+      "port": 8082,
+      "https": false
+    }
+  ],
+  "volumes": {
+    "persistent": [
+      "../files/happy-data:/app/data",
+      "../files/agent-configs:/app/agent_configs"
+    ]
+  },
+  "healthcheck": {
+    "enabled": true,
+    "path": "/",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "resources": {
+    "limits": {
+      "memory": "1GB",
+      "cpu": "1.0"
+    },
+    "reservations": {
+      "memory": "256MB",
+      "cpu": "0.25"
+    }
+  },
+  "deploy": {
+    "restart_policy": "unless-stopped",
+    "replicas": 1
+  },
+  "webhooks": {
+    "github": {
+      "enabled": true,
+      "secret": "${GITHUB_WEBHOOK_SECRET}",
+      "events": ["push", "pull_request"]
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": true,
+    "logs": {
+      "retention": "7d",
+      "max_size": "100M"
+    }
+  }
+}

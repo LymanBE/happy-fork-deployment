@@ -1,0 +1,197 @@
+# Happy Fork Deployment - Tool and Task Management
+# https://mise.jdx.dev
+
+# Minimum mise version requirement
+min_version = '2024.11.1'
+
+[env]
+_.file = ".env.yaml"
+
+[tools]
+# Core ecosystem
+hk = "latest"  # Git hooks orchestration
+pkl = "latest" # Configuration language
+
+# Data processing (MANDATORY)
+jq = "latest" # JSON processing
+yq = "latest" # YAML processing
+
+# YAML ecosystem
+yamllint = "latest" # YAML linting (style + correctness)
+yamlfmt = "latest"  # YAML formatting
+
+# Shell ecosystem
+shellcheck = "latest" # Shell script analysis
+shfmt = "latest"      # Shell script formatting
+
+# Universal formatting
+prettier = "latest" # Multi-language formatter
+
+# Language-specific linters
+markdownlint-cli2 = "latest" # Markdown linting
+taplo = "latest"             # TOML formatting
+hadolint = "latest"          # Dockerfile linting
+actionlint = "latest"        # GitHub Actions linting
+gitleaks = "latest"          # Secret scanning
+
+# Release management
+cocogitto = "latest" # Conventional commits + releases
+
+# Project-specific tools
+node = "20"
+docker-cli = "latest"
+# convai is installed via npm, not mise
+
+[tasks.validate-config]
+description = "Validate all configuration files"
+run = '''
+echo "🔍 Validating configuration files..."
+echo "  → Checking YAML syntax and style..."
+find . -name "*.yml" -o -name "*.yaml" -not -path "./node_modules/*" | xargs yamllint || exit 1
+echo "  → Checking JSON files..."
+find . -name "*.json" -not -path "./node_modules/*" | while read -r file; do
+    echo "    Validating: $file"
+    jq empty "$file" || exit 1
+done
+echo "  → Validating Docker Compose..."
+docker compose config --quiet || exit 1
+echo "✅ All configurations valid"
+'''
+
+[tasks.security-check]
+description = "Run security checks on codebase"
+run = '''
+echo "🔐 Running security checks..."
+echo "  → Checking for secrets in git history..."
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks detect --no-git || true
+else
+    echo "    ⚠️  gitleaks not installed, skipping"
+fi
+echo "  → Checking file permissions..."
+find . -type f -perm /o+w -not -path "./.git/*" -exec echo "    ⚠️  World-writable: {}" \;
+echo "  → Checking .env file..."
+if [ -f .env ]; then
+    if git ls-files --error-unmatch .env 2>/dev/null; then
+        echo "    ❌ ERROR: .env is tracked in git!"
+        exit 1
+    else
+        echo "    ✅ .env is not tracked"
+    fi
+fi
+echo "✅ Security checks complete"
+'''
+
+[tasks.install-hooks]
+description = "Install git hooks using hk"
+run = "hk install --mise"
+
+[tasks.lint]
+description = "Run all linters"
+run = '''
+echo "🧹 Running linters..."
+hk check || true
+echo "  → Linting shell scripts..."
+find . -name "*.sh" -exec shellcheck {} \;
+echo "  → Linting Dockerfiles..."
+if [ -f Dockerfile ]; then
+    hadolint Dockerfile || true
+fi
+echo "  → Linting GitHub Actions..."
+if [ -d .github/workflows ]; then
+    find .github/workflows -name "*.yml" -exec actionlint {} \;
+fi
+echo "✅ Linting complete"
+'''
+
+[tasks.fix]
+description = "Auto-fix all fixable issues"
+run = '''
+echo "🔧 Auto-fixing issues..."
+hk fix
+echo "✅ Auto-fix complete"
+'''
+
+[tasks.deploy]
+description = "Deploy Happy with Docker"
+depends = ["validate-config"]
+run = "./deploy.sh"
+
+[tasks.deploy-clean]
+description = "Clean deploy (remove existing containers first)"
+run = '''
+echo "🧹 Cleaning existing deployment..."
+docker compose down -v || true
+docker rm -f happy-web-custom || true
+echo "🚀 Starting fresh deployment..."
+./deploy.sh
+'''
+
+[tasks.logs]
+description = "View Happy container logs"
+run = "docker logs -f happy-web-custom"
+
+[tasks.status]
+description = "Check deployment status"
+run = '''
+echo "📊 Deployment Status:"
+echo ""
+echo "🐳 Docker containers:"
+docker ps | grep happy || echo "  No Happy containers running"
+echo ""
+echo "🔑 ElevenLabs configuration:"
+source .env 2>/dev/null
+if [ -n "$ELEVENLABS_AGENT_ID" ] && [ "$ELEVENLABS_AGENT_ID" != "agent_your_custom_agent_id_here" ]; then
+    echo "  ✅ Agent ID configured: ${ELEVENLABS_AGENT_ID:0:20}..."
+else
+    echo "  ⚠️  Agent ID not configured"
+fi
+echo ""
+echo "🌐 Access URLs:"
+echo "  Local:   http://localhost:8082"
+echo "  Tailnet: http://100.119.254.98:8082"
+'''
+
+[tasks.agent-list]
+description = "List configured ElevenLabs agents"
+run = '''
+source .env 2>/dev/null
+ELEVENLABS_API_KEY="${ELEVENLABS_API_KEY}" convai list-agents
+'''
+
+[tasks.agent-sync]
+description = "Sync agent configuration to ElevenLabs"
+run = '''
+source .env 2>/dev/null
+ELEVENLABS_API_KEY="${ELEVENLABS_API_KEY}" convai sync --env prod
+'''
+
+[tasks.commit]
+description = "Create conventional commit with cog"
+run = "cog commit"
+
+[tasks.release]
+description = "Create a new release"
+run = '''
+echo "🚀 Creating new release..."
+cog bump --auto
+cog changelog
+echo "✅ Release created! Don't forget to push tags: git push --tags"
+'''
+
+[tasks.format]
+description = "Format all files"
+run = "hk fix"
+
+[tasks.setup]
+description = "Complete project setup"
+depends = ["install-hooks", "validate-config", "security-check"]
+run = '''
+echo "✅ Project setup complete!"
+echo ""
+echo "Next steps:"
+echo "  1. Run 'mise run deploy' to deploy Happy"
+echo "  2. Run 'mise run status' to check deployment"
+echo "  3. Run 'mise run logs' to view container logs"
+echo "  4. Run 'mise run commit' for conventional commits"
+'''

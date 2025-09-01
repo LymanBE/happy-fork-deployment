@@ -35,3 +35,17 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# Convai lock file (contains state)
+convai.lock
+
+# Agent configurations (may contain secrets)
+agent_configs/*.json
+!agent_configs/example.json
+
+# Files directory (volumes)
+files/
+
+# Age keys for sops
+*.age
+age.txt.env.json.decrypted

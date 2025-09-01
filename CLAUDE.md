@@ -2,6 +2,8 @@
 
 You deploy the custom Happy fork via Docker on Dokploy (100.119.254.98) on your Tailnet.
 
+@README.md
+
 ## Quick Deploy
 ```bash
 ./deploy.sh  # Automated deployment with prompts
@@ -10,13 +12,12 @@ You deploy the custom Happy fork via Docker on Dokploy (100.119.254.98) on your 
 ## Manual Configuration
 
 ### 1. ElevenLabs Credentials
-@.env.example shows required environment variables
-Copy to `.env` and add your credentials:
+Copy `.env.example` to `.env` and add your credentials:
 - `ELEVENLABS_AGENT_ID` - Get from elevenlabs.io AI Agents dashboard
 - `ELEVENLABS_API_KEY` - Get from Profile → API Keys (optional but recommended)
 
 ### 2. Docker Deployment
-@docker-compose.yml contains full container configuration
+Use docker-compose.yml for container configuration:
 ```bash
 docker-compose up -d
 ```
@@ -62,6 +63,20 @@ docker-compose up -d
 - @../happy-fork/CLAUDE.md - Development context
 - @README.md - Detailed deployment documentation
 - @deploy.sh - Automated deployment script
+
+## Session Handoff Status
+
+### Deployment Ready
+- **API Key**: Stored in `.env` (sk_9d281053...)
+- **Agent ID**: Still needed - user must create at elevenlabs.io
+- **Docker**: Configuration complete, use `./deploy.sh`
+- **Dokploy**: Project 'happy-assistant' created
+
+### Files in This Directory
+- `.env` - Contains API key (gitignored)
+- `docker-compose.yml` - Builds from GitHub fork
+- `deploy.sh` - Automated deployment script
+- `NEXT-STEPS.md` - Instructions for agent creation
 
 ## Critical Protocols
 - NEVER hardcode timestamps - use `date --iso-8601=seconds`

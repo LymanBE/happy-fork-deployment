@@ -1,56 +1,49 @@
 version: '3.8'
-
 services:
   happy-web-custom:
     build:
-      context: https://github.com/LymanBE/happy-fork.git
+      context: ../happy-fork
       dockerfile_inline: |
         FROM node:20-alpine
-        
+
         # Install dependencies
         RUN apk add --no-cache git python3 make g++
-        
-        # Clone your fork
-        RUN git clone https://github.com/LymanBE/happy-fork.git /app
+
+        # Copy local fork code
         WORKDIR /app
-        
+        COPY . /app
+
         # Install dependencies
         RUN npm install --legacy-peer-deps --ignore-scripts
         RUN npm install -g patch-package
         RUN npx patch-package || true
-        
+
         # Build for web
         RUN npm run build:web || true
-        
+
         EXPOSE 3000
         CMD ["npm", "run", "web"]
-    
     container_name: happy-web-custom
     restart: unless-stopped
     ports:
       - "8082:3000"
-    
     environment:
       # Happy server configuration
       - EXPO_PUBLIC_HAPPY_SERVER_URL=https://api.cluster-fluster.com
-      
       # Custom ElevenLabs configuration (add your keys here)
       - EXPO_PUBLIC_ELEVENLABS_AGENT_ID=${ELEVENLABS_AGENT_ID:-}
       - EXPO_PUBLIC_ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      
       # Future OpenAI configuration (when implemented)
       # - EXPO_PUBLIC_VOICE_PROVIDER=openai
       # - EXPO_PUBLIC_OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # - EXPO_PUBLIC_OPENAI_MODEL=gpt-4-realtime
-      
       - NODE_ENV=production
-    
     volumes:
       - happy-custom-data:/app
-    
+      - ../files/agent-configs:/app/agent_configs:ro
+      - ../files/logs:/app/logs
     networks:
       - dokploy-network
-    
     labels:
       - "dokploy.enabled=true"
       - "dokploy.name=happy-custom"
@@ -58,10 +51,8 @@ services:
       - "dokploy.project=happy-assistant"
       - "dokploy.domain=happy.${TAILNET_DOMAIN:-local}"
       - "dokploy.port=3000"
-
 volumes:
   happy-custom-data:
-
 networks:
   dokploy-network:
     external: true
