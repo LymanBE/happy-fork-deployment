@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  happy-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - 3000
+    environment:
+      # Happy server configuration
+      - EXPO_PUBLIC_HAPPY_SERVER_URL=https://api.cluster-fluster.com
+      # ElevenLabs configuration from Dokploy environment
+      - EXPO_PUBLIC_ELEVENLABS_AGENT_ID=${ELEVENLABS_AGENT_ID}
+      - EXPO_PUBLIC_ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      # Node environment
+      - NODE_ENV=production
+    volumes:
+      - happy-data:/app/data
+      - ./agent_configs:/app/agent_configs:ro
+    networks:
+      - dokploy-network
+    labels:
+      # Traefik routing configuration
+      - "traefik.enable=true"
+      - "traefik.http.routers.happy.rule=Host(`happy.100.119.254.98.nip.io`)"
+      - "traefik.http.routers.happy.entrypoints=websecure"
+      - "traefik.http.routers.happy.tls.certResolver=letsencrypt"
+      - "traefik.http.services.happy.loadbalancer.server.port=3000"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.happy-http.rule=Host(`happy.100.119.254.98.nip.io`)"
+      - "traefik.http.routers.happy-http.entrypoints=web"
+      - "traefik.http.routers.happy-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+
+volumes:
+  happy-data:
+
+networks:
+  dokploy-network:
+    external: true

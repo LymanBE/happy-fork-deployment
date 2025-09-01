@@ -1,8 +1,8 @@
 version: '3.8'
 services:
-  happy-web-custom:
+  happy-web:
     build:
-      context: ../happy-fork
+      context: ./happy-fork
       dockerfile_inline: |
         FROM node:20-alpine
 
@@ -23,10 +23,10 @@ services:
 
         EXPOSE 3000
         CMD ["npm", "run", "web"]
-    container_name: happy-web-custom
+    # NO container_name - Dokploy manages this
     restart: unless-stopped
     ports:
-      - "8082:3000"
+      - 3000
     environment:
       # Happy server configuration
       - EXPO_PUBLIC_HAPPY_SERVER_URL=https://api.cluster-fluster.com
@@ -45,12 +45,19 @@ services:
     networks:
       - dokploy-network
     labels:
-      - "dokploy.enabled=true"
-      - "dokploy.name=happy-custom"
-      - "dokploy.description=Happy with custom voice API support"
-      - "dokploy.project=happy-assistant"
-      - "dokploy.domain=happy.${TAILNET_DOMAIN:-local}"
-      - "dokploy.port=3000"
+      # Traefik routing configuration
+      - "traefik.enable=true"
+      - "traefik.http.routers.happy-web.rule=Host(`happy.100.119.254.98.nip.io`)"
+      - "traefik.http.routers.happy-web.entrypoints=websecure"
+      - "traefik.http.routers.happy-web.tls.certResolver=letsencrypt"
+      - "traefik.http.services.happy-web.loadbalancer.server.port=3000"
+      # HTTP redirect to HTTPS
+      - "traefik.http.routers.happy-web-http.rule=Host(`happy.100.119.254.98.nip.io`)"
+      - "traefik.http.routers.happy-web-http.entrypoints=web"
+      - "traefik.http.routers.happy-web-http.middlewares=redirect-to-https"
+      # Middleware for HTTPS redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 volumes:
   happy-custom-data:
 networks:
