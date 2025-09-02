@@ -6,7 +6,8 @@ RUN apk add --no-cache git python3 make g++
 # Set working directory
 WORKDIR /app
 
-# Copy the Happy fork code from submodule
+# Copy the Happy fork code from build context
+# This requires happy-fork to be available locally
 COPY happy-fork/ /app/
 
 # Install dependencies

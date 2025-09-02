@@ -2,27 +2,8 @@ version: '3.8'
 services:
   happy-web:
     build:
-      context: ./happy-fork
-      dockerfile_inline: |
-        FROM node:20-alpine
-
-        # Install dependencies
-        RUN apk add --no-cache git python3 make g++
-
-        # Copy local fork code
-        WORKDIR /app
-        COPY . /app
-
-        # Install dependencies
-        RUN npm install --legacy-peer-deps --ignore-scripts
-        RUN npm install -g patch-package
-        RUN npx patch-package || true
-
-        # Build for web
-        RUN npm run build:web || true
-
-        EXPOSE 3000
-        CMD ["npm", "run", "web"]
+      context: .
+      dockerfile: Dockerfile
     # NO container_name - Dokploy manages this
     restart: unless-stopped
     ports:
