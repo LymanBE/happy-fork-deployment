@@ -132,7 +132,7 @@ jobs:
           mise trust mise.toml
           mise settings set sops.age_key_file ~/.config/mise/age.txt
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.DOKPLOY_SSH_KEY }}
       - name: Deploy via Dokploy API
