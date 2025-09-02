@@ -14,8 +14,7 @@ RUN npm install --legacy-peer-deps --ignore-scripts && \
     npm install -g patch-package && \
     npx patch-package || true
 
-# Build for web
-RUN npm run build:web || true
+# No build step needed - Expo builds at runtime
 
 # Expose port
 EXPOSE 3000
