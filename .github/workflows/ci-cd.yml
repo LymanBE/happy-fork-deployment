@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
@@ -40,7 +40,7 @@ jobs:
     needs: validate
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
@@ -69,7 +69,7 @@ jobs:
     needs: [validate, lint]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Docker Buildx
@@ -92,7 +92,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Download Docker image
         uses: actions/download-artifact@v4
         with:
@@ -117,7 +117,7 @@ jobs:
       url: http://100.119.254.98:8082
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Age Key
         run: |
           mkdir -p ~/.config/mise
@@ -189,7 +189,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Generate changelog
         id: changelog
         run: |
